@@ -815,7 +815,8 @@ impl WriteTransaction {
         // `wal.commit()` call here, because the append→register window between
         // them is what let a flush cycle drain this frame into an earlier
         // epoch and then fail it without the transaction ever learning.
-        let (base_lsn, wait_epoch) = wal::log_operations_to_wal(self, commit_timestamp, &closing_version_ids)?;
+        let (base_lsn, wait_epoch) =
+            wal::log_operations_to_wal(self, commit_timestamp, &closing_version_ids)?;
 
         // Register the commit's base LSN as in-flight BEFORE the durability fsync,
         // so a write that becomes durable is always registered. The guard survives

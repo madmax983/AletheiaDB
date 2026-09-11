@@ -664,7 +664,11 @@ impl BackgroundFlusher {
     /// Returns the outcome for [`Self::finish_flush_epoch`] /
     /// [`Self::carry_flush_outcome`]. Updates the consecutive-error counter
     /// and logs exactly as the old combined handler did.
-    fn flush_entries(&self, entries: Vec<super::ring_buffer::PendingEntry>, sync: bool) -> Result<()> {
+    fn flush_entries(
+        &self,
+        entries: Vec<super::ring_buffer::PendingEntry>,
+        sync: bool,
+    ) -> Result<()> {
         if entries.is_empty() {
             // Reset error counter on success
             self.error_counter.store(0, Ordering::Relaxed);
@@ -3369,7 +3373,10 @@ mod tests {
             // the transaction registered into. Before the fix it could have
             // drained first, opening an earlier epoch — the false-success
             // interleaving.
-            assert!(!entries.is_empty(), "the drained batch must contain the frame");
+            assert!(
+                !entries.is_empty(),
+                "the drained batch must contain the frame"
+            );
             let epoch = opened
                 .expect("entries were drained, so an epoch must open")
                 .expect("open succeeded")
@@ -3381,13 +3388,19 @@ mod tests {
                  {wait_epoch}: the append→register window was not closed"
             );
 
-            // Outcome attribution: fail this flush, and the transaction must
-            // see the failure on its own epoch — not a later success for a
-            // frame that never reached disk.
-            flusher.simulate_flush_outcome(flush_failure("the frame never reached disk"));
+            // Outcome attribution: fail THIS flush — the one the drain above
+            // opened for the transaction's frame — and the transaction must
+            // see the failure on its own epoch, not a later success for a
+            // frame that never reached disk. (Deliver to the drained epoch
+            // directly: `simulate_flush_outcome` opens a NEW epoch, so the
+            // failure would land on an epoch the transaction never waited on
+            // and the wait would time out instead.)
+            flusher.finish_flush_epoch(epoch, flush_failure("the frame never reached disk"));
             let msg = gc
                 .wait_for_flush(wait_epoch)
-                .expect_err("the flush failed, so the waiter must see an error, not a false success")
+                .expect_err(
+                    "the flush failed, so the waiter must see an error, not a false success",
+                )
                 .to_string();
             assert!(
                 msg.contains("the frame never reached disk"),

@@ -1728,8 +1728,8 @@ mod tests {
 
 #[cfg(test)]
 mod sentry_tests {
-    use super::*;
     use super::tests::{test_operation, wedged_wal};
+    use super::*;
     use crate::GLOBAL_INTERNER;
     use crate::core::id::NodeId;
     use crate::core::property::PropertyMapBuilder;
