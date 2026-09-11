@@ -179,7 +179,10 @@ mod tests {
             estimated_cost: Default::default(),
             temporal_context: None,
             parallel: false,
-            include_provenance: false,
+            // `ProvenanceFilterIterator` strips `row.path` when provenance is
+            // excluded; this test asserts the exact materialized paths, so
+            // provenance must be on for the paths to survive `execute`.
+            include_provenance: true,
         };
 
         let results = executor.execute(plan).expect("Execution failed");
