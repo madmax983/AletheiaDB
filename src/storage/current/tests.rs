@@ -1554,7 +1554,7 @@ fn test_outgoing_edges_iter_matches_vec_across_layers() {
         );
     }
 
-    let mut check_node = |n: NodeId| {
+    let check_node = |n: NodeId| {
         let mut from_iter: Vec<EdgeId> = storage.get_outgoing_edges_iter(n).collect();
         let mut from_vec = storage.get_outgoing_edges(n);
         from_iter.sort();
