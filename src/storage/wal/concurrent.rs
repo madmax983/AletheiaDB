@@ -184,7 +184,10 @@ pub enum ShutdownOutcome {
     /// flight. Buffers are closed (blocked appenders will exit via the
     /// `Closed` path), but the caller must not assume every append
     /// completed — some may have been refused by the close.
-    TimedOut { active_batches: usize },
+    TimedOut {
+        /// Number of appenders still in flight when the deadline expired.
+        active_batches: usize,
+    },
 }
 
 /// Concurrent Write-Ahead Log with striped architecture.
@@ -1010,7 +1013,7 @@ mod tests {
     use std::thread;
     use tempfile::tempdir;
 
-    fn test_operation() -> WalOperation {
+    pub(super) fn test_operation() -> WalOperation {
         WalOperation::CreateNode {
             node_id: NodeId::new(1).unwrap(),
             label: GLOBAL_INTERNER.intern("Test").unwrap(),
@@ -1377,7 +1380,11 @@ mod tests {
 
     /// A one-stripe WAL whose ring buffer holds `capacity` entries and whose
     /// blocking appends give up after `bound_ms`.
-    fn wedged_wal(dir: &std::path::Path, capacity: usize, bound_ms: u64) -> Arc<ConcurrentWal> {
+    pub(super) fn wedged_wal(
+        dir: &std::path::Path,
+        capacity: usize,
+        bound_ms: u64,
+    ) -> Arc<ConcurrentWal> {
         let config = ConcurrentWalConfig::new(dir)
             .with_num_stripes(1)
             .with_stripe_capacity(capacity)
@@ -1722,11 +1729,14 @@ mod tests {
 #[cfg(test)]
 mod sentry_tests {
     use super::*;
+    use super::tests::{test_operation, wedged_wal};
     use crate::GLOBAL_INTERNER;
     use crate::core::id::NodeId;
     use crate::core::property::PropertyMapBuilder;
     use crate::core::temporal::time;
     use crate::storage::wal::entry::MAX_WAL_ENTRY_SIZE;
+    use std::sync::Arc;
+    use std::thread;
     use tempfile::tempdir;
 
     /// 🎯 Target: MAX_WAL_ENTRY_SIZE boundary check
