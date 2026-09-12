@@ -539,15 +539,14 @@ impl BackgroundFlusher {
         let Some(gc) = self.group_commit.as_ref() else {
             return Ok(None);
         };
-        gc.start_flush().map(Some).map_err(|err| {
+        gc.start_flush().map(Some).inspect_err(|err| {
             // No epoch was opened, so nothing is stranded and no waiter was
             // woken — but the drained entries still need flushing, and a
             // FAILING outcome still has nowhere to go. `current_epoch` did not
             // move, so the epoch this cycle would have flushed is the same one
             // the next cycle will open: the caller carries the failure to it
             // via `carry_flush_outcome` rather than losing it.
-            self.note_cycle_error("starting the group-commit flush epoch", &err);
-            err
+            self.note_cycle_error("starting the group-commit flush epoch", err);
         })
     }
 
